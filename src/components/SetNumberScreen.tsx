@@ -131,7 +131,7 @@ const SetNumberScreen = ({ state, dispatch }: Props) => {
       </div>
       <div className="walk-away-number">
         <h3>{walkAwayNumber !== null ? formatMoney(walkAwayNumber) : 'Set your estimate to see your number.'}</h3>
-        <p>Your offer tops the highest rival bid by {currentHouse.escalationStep} at a time, up to this number and never above it.</p>
+        <p>Your offer tops the highest rival bid by {formatMoney(currentHouse.escalationStep)} at a time, up to this number and never above it.</p>
       </div>
       <button onClick={handleSubmit} disabled={estimate === null}>
         Submit Offer
