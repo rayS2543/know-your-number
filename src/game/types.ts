@@ -24,21 +24,32 @@ export interface House {
 }
 
 export interface PlayerOffer {
-  price: number;
+  estimate: number;
+  allocation: number;
+  cap: number;
 }
 
 export interface HouseResult {
   house: House;
   playerOffer: PlayerOffer;
-  settlement: Settlement;
+  settlement: Settlement | null;
+  won: boolean;
+  winningPrice: number | null;
   score: HouseScore;
 }
 
 export interface GameState {
+  phase: "start" | "dossier" | "setNumber" | "bidding" | "reveal" | "finalResults";
   currentHouseIndex: number;
   houses: House[];
   playerOffers: PlayerOffer[];
   houseResults: HouseResult[];
+  biddingProgress: {
+    rivalBidIndex: number;
+    checkpointOpen: boolean;
+    raises: number;
+    finalCap: number;
+  };
 }
 
 export interface Settlement {

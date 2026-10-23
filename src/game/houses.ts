@@ -32,9 +32,9 @@ export const houses: House[] = [
     reserveFloor: 8000,
     escalationStep: 3000,
     comps: [
-      { price: 498000, distanceMi: 0.2, sqftNote: "similar sq ft and condition", soldNote: "sold last month" },
-      { price: 506000, distanceMi: 0.5, sqftNote: "similar sq ft and condition", soldNote: "sold last month" },
-      { price: 505000, distanceMi: 0.3, sqftNote: "similar sq ft and condition", soldNote: "sold 3 weeks ago" }
+      { price: 498000, distanceMi: 0.2, sqftNote: "similar sq ft and condition", conditionNote: "similar condition", soldNote: "sold last month" },
+      { price: 506000, distanceMi: 0.5, sqftNote: "similar sq ft and condition", conditionNote: "similar condition", soldNote: "sold last month" },
+      { price: 505000, distanceMi: 0.3, sqftNote: "similar sq ft and condition", conditionNote: "similar condition", soldNote: "sold 3 weeks ago" }
     ],
     actualAppraisal: 503000,
     appraisalDerivation: "All three sales are close, recent, and similar, so they carry near equal weight: ($498,000 + $506,000 + $505,000) / 3 = $503,000.",
