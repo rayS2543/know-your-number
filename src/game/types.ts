@@ -30,6 +30,7 @@ export interface PlayerOffer {
 }
 
 export interface HouseResult {
+  raises: number;
   house: House;
   playerOffer: PlayerOffer;
   settlement: Settlement | null;

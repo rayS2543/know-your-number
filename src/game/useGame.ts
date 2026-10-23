@@ -110,6 +110,7 @@ export function gameReducer(state: GameState, action: Action): GameState {
         houseResults: [
           ...state.houseResults,
           {
+            raises: state.biddingProgress.raises,
             house: currentHouse,
             playerOffer: playerOffer,
             settlement: null,
@@ -145,6 +146,7 @@ export function gameReducer(state: GameState, action: Action): GameState {
         houseResults: [
           ...state.houseResults,
           {
+            raises: state.biddingProgress.raises,
             house: house,
             playerOffer: offer,
             settlement: houseFinishedSettlement ?? null,
