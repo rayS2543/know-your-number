@@ -18,20 +18,17 @@ const SetNumberScreen = ({ state, dispatch }: Props) => {
   };
 
   const safeGapAmount = currentHouse.pot - currentHouse.reserveFloor;
-  const walkAwayNumber = estimate !== null ? estimate + allocation : null;
+  // A usable guess is positive and in $1,000 steps.
+  const estimateValid = estimate !== null && estimate % 1000 === 0;
+  const walkAwayNumber = estimateValid ? estimate + allocation : null;
 
   const handleEstimateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(event.target.value, 10);
-    setEstimate(value);
-  };
-
-  const handleAllocationChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(event.target.value, 10);
-    setAllocation(value);
+    setEstimate(Number.isFinite(value) && value > 0 ? value : null);
   };
 
   const handleSubmit = () => {
-    if (estimate !== null) {
+    if (estimateValid) {
       dispatch({
         type: 'SUBMIT_OFFER',
         payload: {
@@ -78,7 +75,8 @@ const SetNumberScreen = ({ state, dispatch }: Props) => {
       </div>
       <div className="inputs">
         <div className="input-group">
-          <label>Your Estimated Appraised Value</label>
+          <label className="font-semibold">Your guess at the appraisal</label>
+          <p className="text-sm text-gray-600">The bank sends an appraiser. Using the sales above, what number will they land on?</p>
           <input
             type="range"
             min={Math.floor(currentHouse.listingPrice * 0.8 / 1000) * 1000}
@@ -98,30 +96,34 @@ const SetNumberScreen = ({ state, dispatch }: Props) => {
           />
         </div>
         <div className="input-group">
-          <label>Gap Cash You Are Willing to Spend</label>
-          <input
-            type="range"
-            min={0}
-            max={currentHouse.pot}
-            step={500}
-            value={allocation}
-            onChange={handleAllocationChange}
-          />
-          <input
-            type="number"
-            min={0}
-            max={currentHouse.pot}
-            step={500}
-            value={allocation}
-            onChange={handleAllocationChange}
-          />
-          <p>Cash left if you spend this: {formatMoney(currentHouse.pot - allocation)}</p>
+          <label className="font-semibold">The most you will bid</label>
+          {!estimateValid ? (
+            <p className="text-sm text-gray-600">Set your guess first, in $1,000 steps. Then choose how far above it you are willing to go.</p>
+          ) : (
+            <>
+              <p className="text-sm text-gray-600">
+                Your guess is {formatMoney(estimate)}. Going above it means you are betting the appraisal comes in higher than you think.
+              </p>
+              <input
+                type="range"
+                min={estimate}
+                max={estimate + currentHouse.pot}
+                step={500}
+                value={estimate + allocation}
+                onChange={(e) => setAllocation(parseInt(e.target.value, 10) - estimate)}
+              />
+              <p>
+                That is <strong>{formatMoney(allocation)}</strong> above your guess. If the appraisal matches your guess, you would need{' '}
+                {formatMoney(allocation)} of spare cash to close, leaving {formatMoney(currentHouse.pot - allocation)}.
+              </p>
+            </>
+          )}
         </div>
       </div>
       <div className="reserve-warning">
         {allocation > safeGapAmount ? (
           <div className="warning">
-            This allocation dips into your reserve by {formatMoney(allocation - safeGapAmount)}. If you win near your cap, you will close with less than your reserve left.
+            Going this high dips into your reserve by {formatMoney(allocation - safeGapAmount)}. If you win near your cap, you will close with less than your reserve left.
           </div>
         ) : (
           <div className="neutral">
@@ -130,10 +132,11 @@ const SetNumberScreen = ({ state, dispatch }: Props) => {
         )}
       </div>
       <div className="walk-away-number">
+        <p className="text-sm text-gray-600">Your most you will bid</p>
         <h3>{walkAwayNumber !== null ? formatMoney(walkAwayNumber) : 'Set your estimate to see your number.'}</h3>
         <p>Your offer tops the highest rival bid by {formatMoney(currentHouse.escalationStep)} at a time, up to this number and never above it.</p>
       </div>
-      <button onClick={handleSubmit} disabled={estimate === null}>
+      <button onClick={handleSubmit} disabled={!estimateValid}>
         Submit Offer
       </button>
     </div>

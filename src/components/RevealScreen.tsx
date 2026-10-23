@@ -68,7 +68,7 @@ const RevealScreen = ({ state, dispatch }: Props) => {
       </div>
 
       <p className="text-sm text-gray-600">
-        Your numbers: estimate {formatMoney(playerOffer.estimate)}, allocation {formatMoney(playerOffer.allocation)}, original cap{' '}
+        Your numbers: estimate {formatMoney(playerOffer.estimate)}, bid above guess {formatMoney(playerOffer.allocation)}, original cap{' '}
         {formatMoney(playerOffer.estimate + playerOffer.allocation)}, final cap {formatMoney(playerOffer.cap)}, raises {r.raises}.
       </p>
 

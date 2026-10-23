@@ -32,19 +32,25 @@ const BiddingScreen = ({ state, dispatch }: Props) => {
     dispatch({ type: 'HOLD_CAP' });
   };
 
+  // A raise must beat the highest rival bid, so the smallest raise is one step above it.
+  const minRaise = Math.max(playerOffer.cap, highestRivalBid ?? 0) + 3000;
+  const raiseTo = Math.max(newCap, minRaise);
+
   const handleRaiseCap = () => {
-    dispatch({ type: 'RAISE_CAP', payload: { newCap } });
-    setNewCap(newCap);
+    dispatch({ type: 'RAISE_CAP', payload: { newCap: raiseTo } });
   };
 
   const handleCapChange = (step: number) => {
-    const newCapValue = Math.max(playerOffer.cap + 3000, newCap + step);
-    setNewCap(newCapValue);
+    setNewCap(Math.max(minRaise, raiseTo + step));
   };
 
   const showCheckpoint = highestRivalBid !== null && highestRivalBid >= playerOffer.cap;
-  const previewGap = Math.max(0, newCap - playerOffer.estimate);
-  const gapWarning = previewGap > playerOffer.allocation ? 'Warning: Preview gap exceeds your allocation.' : previewGap > currentHouse.pot ? 'Warning: Preview gap exceeds the pot.' : '';
+  const previewGap = Math.max(0, raiseTo - playerOffer.estimate);
+  const gapWarning = previewGap > currentHouse.pot
+    ? 'Warning: if the appraisal matches your guess, this gap is more than all your spare cash, so you could not close.'
+    : previewGap > playerOffer.allocation
+      ? 'Warning: this is further above your guess than you planned to go.'
+      : '';
 
   return (
     <div className="bidding-screen">
@@ -72,8 +78,8 @@ const BiddingScreen = ({ state, dispatch }: Props) => {
         <h3>Headroom</h3>
         {highestRivalBid !== null ? (
           <>
-            {formatMoney(playerOffer.cap - highestRivalBid)}
-            <div className="progress-bar" style={{ width: `${((playerOffer.cap - highestRivalBid) / playerOffer.cap) * 100}%` }}></div>
+            {formatMoney(Math.max(0, playerOffer.cap - highestRivalBid))}
+            <div className="progress-bar" style={{ width: `${Math.max(0, (playerOffer.cap - highestRivalBid) / playerOffer.cap) * 100}%` }}></div>
           </>
         ) : (
           'Waiting for the first rival bid'
@@ -85,13 +91,13 @@ const BiddingScreen = ({ state, dispatch }: Props) => {
           <p>A rival bid has reached your walk away number. Holding it means you are out.</p>
           <button onClick={handleHoldCap}>Hold My Number</button>
           <div className="raise-control">
-            <button onClick={() => handleCapChange(-3000)} disabled={newCap <= playerOffer.cap}>-</button>
-            <span>{formatMoney(newCap)}</span>
+            <button onClick={() => handleCapChange(-3000)} disabled={raiseTo <= minRaise}>-</button>
+            <span className="mx-3 font-semibold">{formatMoney(raiseTo)}</span>
             <button onClick={() => handleCapChange(3000)}>+</button>
-            <p>Preview gap: {formatMoney(previewGap)}</p>
+            <p>If the appraisal matches your guess, you would pay {formatMoney(previewGap)} of the price in cash.</p>
             {gapWarning && <p className="gap-warning">{gapWarning}</p>}
-            <button onClick={handleRaiseCap} disabled={newCap <= playerOffer.cap}>
-              Raise My Cap to {formatMoney(newCap)}
+            <button onClick={handleRaiseCap}>
+              Raise My Cap to {formatMoney(raiseTo)}
             </button>
           </div>
         </div>

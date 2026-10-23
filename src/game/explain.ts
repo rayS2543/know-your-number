@@ -10,7 +10,8 @@ export const COMPONENTS: { key: Component; label: string; max: number }[] = [
 ];
 
 export function formatMoney(amount: number): string {
-  return '$' + Math.round(amount).toLocaleString('en-US');
+  const sign = amount < 0 ? '-' : '';
+  return sign + '$' + Math.abs(Math.round(amount)).toLocaleString('en-US');
 }
 
 // One plain sentence naming the player's actual numbers for a component of one house.
@@ -24,9 +25,9 @@ export function explain(key: Component, r: HouseResult): string {
   if (key === 'allocation') {
     const safe = house.pot - house.reserveFloor;
     if (playerOffer.allocation > safe) {
-      return `At ${name}, you set aside ${formatMoney(playerOffer.allocation)} for the gap, which is ${formatMoney(playerOffer.allocation - safe)} past the ${formatMoney(safe)} that keeps your reserve intact.`;
+      return `At ${name}, you were willing to bid ${formatMoney(playerOffer.allocation)} above your guess, which is ${formatMoney(playerOffer.allocation - safe)} more than the ${formatMoney(safe)} you could cover with your reserve intact.`;
     }
-    return `At ${name}, you set aside ${formatMoney(playerOffer.allocation)} for the gap, within the ${formatMoney(safe)} that keeps your reserve intact.`;
+    return `At ${name}, you were willing to bid ${formatMoney(playerOffer.allocation)} above your guess, within the ${formatMoney(safe)} you could cover with your reserve intact.`;
   }
   if (key === 'auction') {
     if (r.raises === 0) return `At ${name}, you held the number you set from the evidence and never raised it.`;
