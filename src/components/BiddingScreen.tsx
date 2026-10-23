@@ -88,9 +88,14 @@ const BiddingScreen = ({ state, dispatch }: Props) => {
       {showCheckpoint ? (
         <div className="checkpoint">
           <h3>Checkpoint</h3>
-          <p>A rival bid has reached your walk away number. Holding it means you are out.</p>
+          <p>
+            A rival just bid <strong>{formatMoney(highestRivalBid ?? 0)}</strong>. That has reached your walk away number of{' '}
+            <strong>{formatMoney(playerOffer.cap)}</strong>.
+          </p>
+          <p>Hold your number and you are out of this house. Or raise it and bid past the limit you set from the evidence.</p>
           <button onClick={handleHoldCap}>Hold My Number</button>
           <div className="raise-control">
+            <p className="font-medium">Or raise your walk away number to:</p>
             <button onClick={() => handleCapChange(-3000)} disabled={raiseTo <= minRaise}>-</button>
             <span className="mx-3 font-semibold">{formatMoney(raiseTo)}</span>
             <button onClick={() => handleCapChange(3000)}>+</button>
