@@ -51,7 +51,7 @@ const DossierScreen: React.FC<DossierScreenProps> = ({ state, dispatch }) => {
       <p className="reminder">Appraisers weight recent, nearby, similar size and condition sales most heavily.</p>
       <p className="progress">House {state.currentHouseIndex + 1} of 3</p>
       {totalScore > 0 && <p className="total-score">Total Score: {totalScore}</p>}
-      <button onClick={() => dispatch({ type: 'SUBMIT_OFFER', payload: { estimate: 0, allocation: 0 } })}>Set Your Number</button>
+      <button onClick={() => dispatch({ type: 'GO_TO_SET_NUMBER' })}>Set Your Number</button>
     </div>
   );
 };

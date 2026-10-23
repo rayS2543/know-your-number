@@ -7,6 +7,7 @@ interface Action {
   type: 
     | 'START_GAME'
     | 'BEGIN_HOUSE'
+    | 'GO_TO_SET_NUMBER'
     | 'SUBMIT_OFFER'
     | 'NEXT_BID'
     | 'RAISE_CAP'
@@ -31,7 +32,7 @@ const initialState: GameState = {
   },
 };
 
-function gameReducer(state: GameState, action: Action): GameState {
+export function gameReducer(state: GameState, action: Action): GameState {
   switch (action.type) {
     case 'START_GAME':
       return {
@@ -44,6 +45,8 @@ function gameReducer(state: GameState, action: Action): GameState {
         phase: 'dossier',
         currentHouseIndex: state.currentHouseIndex + 1,
       };
+    case 'GO_TO_SET_NUMBER':
+      return { ...state, phase: 'setNumber' };
     case 'SUBMIT_OFFER':
       return {
         ...state,
@@ -64,16 +67,22 @@ function gameReducer(state: GameState, action: Action): GameState {
         },
       };
     case 'NEXT_BID':
-      return {
-        ...state,
-        biddingProgress: {
-          ...state.biddingProgress,
-          rivalBidIndex: state.biddingProgress.rivalBidIndex + 1,
-        },
-      };
+      if (state.biddingProgress.rivalBidIndex < state.houses[state.currentHouseIndex].rivalBids.length) {
+        return {
+          ...state,
+          biddingProgress: {
+            ...state.biddingProgress,
+            rivalBidIndex: state.biddingProgress.rivalBidIndex + 1,
+          },
+        };
+      }
+      return state;
     case 'RAISE_CAP':
       return {
         ...state,
+        playerOffers: state.playerOffers.map((offer, index) =>
+          index === state.currentHouseIndex ? { ...offer, cap: action.payload.newCap } : offer
+        ),
         biddingProgress: {
           ...state.biddingProgress,
           finalCap: action.payload.newCap,
@@ -83,7 +92,6 @@ function gameReducer(state: GameState, action: Action): GameState {
     case 'HOLD_CAP':
       const currentHouse = state.houses[state.currentHouseIndex];
       const playerOffer = state.playerOffers[state.currentHouseIndex];
-      const holdCapSettlement = settleHouse(playerOffer.cap, currentHouse.actualAppraisal, currentHouse.pot, currentHouse.reserveFloor);
       const holdCapScore = scoreHouse({
         houseId: currentHouse.id as 1 | 2 | 3,
         estimate: playerOffer.estimate,
@@ -93,8 +101,8 @@ function gameReducer(state: GameState, action: Action): GameState {
         reserveFloor: currentHouse.reserveFloor,
         raises: state.biddingProgress.raises,
         won: false,
-        canClose: holdCapSettlement.canClose,
-        closesSafely: holdCapSettlement.closesSafely,
+        canClose: false,
+        closesSafely: false,
       });
       return {
         ...state,
@@ -104,7 +112,7 @@ function gameReducer(state: GameState, action: Action): GameState {
           {
             house: currentHouse,
             playerOffer: playerOffer,
-            settlement: holdCapSettlement,
+            settlement: null,
             won: false,
             winningPrice: null,
             score: holdCapScore,
@@ -115,7 +123,8 @@ function gameReducer(state: GameState, action: Action): GameState {
       const houseIndex = state.currentHouseIndex;
       const house = state.houses[houseIndex];
       const offer = state.playerOffers[houseIndex];
-      const winningPriceResult = winningPrice(offer.cap, house.rivalBids[state.biddingProgress.rivalBidIndex], house.escalationStep);
+      const lastRivalBid = house.rivalBids[house.rivalBids.length - 1];
+      const winningPriceResult = winningPrice(offer.cap, lastRivalBid, house.escalationStep);
       const won = winningPriceResult !== null;
       const houseFinishedSettlement = won ? settleHouse(winningPriceResult, house.actualAppraisal, house.pot, house.reserveFloor) : null;
       const houseFinishedScore = scoreHouse({
