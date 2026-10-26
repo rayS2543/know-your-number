@@ -1,7 +1,8 @@
 import type { Dispatch } from 'react';
 import type { GameState } from '../game/types';
 import type { Action } from '../game/useGame';
-import { COMPONENTS, explain, formatMoney } from '../game/explain';
+import { COMPONENTS, explain, outcomeLabel, outcomeTone } from '../game/explain';
+import { formatMoney } from '../game/logic';
 
 interface Props {
   state: GameState;
@@ -9,76 +10,112 @@ interface Props {
 }
 
 const RevealScreen = ({ state, dispatch }: Props) => {
-  const r = state.houseResults[state.currentHouseIndex];
-  const { house, playerOffer, score, settlement } = r;
+  const result = state.houseResults[state.currentHouseIndex];
+  const { house, playerOffer, score, settlement } = result;
   const last = state.currentHouseIndex >= state.houses.length - 1;
   const soldFor = house.rivalBids[house.rivalBids.length - 1];
+  const label = outcomeLabel(result);
+  const tone = outcomeTone(result);
 
-  let status = 'Lost';
-  if (r.won) {
-    status = !settlement || !settlement.canClose ? 'Won, but cannot close' : settlement.closesSafely ? 'Closes safely' : 'Closes, but breaks your reserve';
-  }
+  const takeaway = !result.won
+    ? score.outcome === 20
+      ? `Winning would have created a ${formatMoney(soldFor - house.actualAppraisal)} appraisal gap. Walking away protected your cash.`
+      : `Your limit kept you from paying past ${formatMoney(playerOffer.cap)}, but this house was designed to reward a safe purchase.`
+    : !settlement || !settlement.canClose
+      ? `The appraisal gap exceeded your ${formatMoney(house.pot)} cash pot, so the purchase would have fallen through.`
+      : settlement.closesSafely
+        ? `You covered the gap and kept ${formatMoney(settlement.potLeft)} in your emergency cushion.`
+        : `You could close, but the gap pulled your cash below the ${formatMoney(house.reserveFloor)} emergency cushion.`;
 
   return (
-    <div className="mx-auto max-w-2xl space-y-4 p-4">
-      <h2 className="text-2xl font-bold">{r.won ? `You bought ${house.name}` : `You let ${house.name} go`}</h2>
-      <p className="font-medium">{status}</p>
-
-      <div className="rounded-xl border-2 border-blue-600 bg-blue-50 p-4">
-        <p className="text-sm text-gray-600">Actual appraisal</p>
-        <p className="text-4xl font-bold">{formatMoney(house.actualAppraisal)}</p>
-        <p className="mt-2">{house.appraisalDerivation}</p>
-      </div>
-
-      {r.won && settlement ? (
-        <table className="w-full text-left">
-          <tbody>
-            <tr><td>Winning price</td><td>{formatMoney(r.winningPrice ?? 0)}</td></tr>
-            <tr><td>Actual appraisal</td><td>{formatMoney(house.actualAppraisal)}</td></tr>
-            <tr><td>Gap due</td><td>{formatMoney(settlement.gapDue)}</td></tr>
-            <tr><td>Spare cash pot</td><td>{formatMoney(house.pot)}</td></tr>
-            <tr><td>Cash left after the gap</td><td>{formatMoney(settlement.potLeft)}</td></tr>
-            <tr><td>Reserve floor</td><td>{formatMoney(house.reserveFloor)}</td></tr>
-            <tr><td>Reserve survived</td><td>{settlement.closesSafely ? 'Yes' : 'No'}</td></tr>
-          </tbody>
-        </table>
-      ) : (
-        <p>
-          The house sold for {formatMoney(soldFor)}. At that price, the gap would have been{' '}
-          {formatMoney(Math.max(0, soldFor - house.actualAppraisal))}.
-        </p>
-      )}
-      <p className="italic">{house.rivalNote}</p>
-
-      <div className="rounded-xl border p-4">
-        <h3 className="font-semibold">Score</h3>
-        {COMPONENTS.map((c) => (
-          <div key={c.key} className="mt-2">
-            <div className="flex justify-between">
-              <span>{c.label}</span>
-              <span>{score[c.key]} / {c.max}</span>
-            </div>
-            {score[c.key] < c.max && <p className="text-sm text-gray-600">{explain(c.key, r)}</p>}
-          </div>
-        ))}
-        <div className="mt-3 flex justify-between border-t pt-2 font-bold">
-          <span>House total</span>
-          <span>{score.total} / 100</span>
+    <main className="screen result-screen">
+      <header className={`result-hero result-hero--${tone}`}>
+        <div>
+          <p className="eyebrow">House {state.currentHouseIndex + 1} decision</p>
+          <h1>{label}</h1>
+          <p className="result-house">{house.name}</p>
         </div>
+        <div className="result-stamp" aria-label={`${score.total} points out of 100`}>
+          <strong>{score.total}</strong>
+          <span>/ 100</span>
+        </div>
+      </header>
+
+      <section className="takeaway" aria-labelledby="takeaway-title">
+        <p className="eyebrow" id="takeaway-title">What this decision means</p>
+        <p>{takeaway}</p>
+      </section>
+
+      <div className="result-grid">
+        <section className="appraisal-card" aria-labelledby="appraisal-title">
+          <p className="eyebrow" id="appraisal-title">Bank appraisal</p>
+          <p className="money-display">{formatMoney(house.actualAppraisal)}</p>
+          <p>{house.appraisalDerivation}</p>
+        </section>
+
+        <section className="settlement-card" aria-labelledby="settlement-title">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">The numbers</p>
+              <h2 id="settlement-title">Settlement check</h2>
+            </div>
+          </div>
+          {result.won && settlement ? (
+            <dl className="metric-list">
+              <div><dt>Winning price</dt><dd>{formatMoney(result.winningPrice ?? 0)}</dd></div>
+              <div><dt>Appraisal gap</dt><dd>{formatMoney(settlement.gapDue)}</dd></div>
+              <div><dt>Cash remaining</dt><dd>{formatMoney(settlement.potLeft)}</dd></div>
+              <div><dt>Emergency cushion target</dt><dd>{formatMoney(house.reserveFloor)}</dd></div>
+            </dl>
+          ) : (
+            <dl className="metric-list">
+              <div><dt>Final sale</dt><dd>{formatMoney(soldFor)}</dd></div>
+              <div><dt>Appraisal gap avoided</dt><dd>{formatMoney(Math.max(0, soldFor - house.actualAppraisal))}</dd></div>
+              <div><dt>Your walk-away number</dt><dd>{formatMoney(playerOffer.cap)}</dd></div>
+              <div><dt>Cash pot protected</dt><dd>{formatMoney(house.pot)}</dd></div>
+            </dl>
+          )}
+          <p className="annotation">{house.rivalNote}</p>
+        </section>
       </div>
 
-      <p className="text-sm text-gray-600">
-        Your numbers: estimate {formatMoney(playerOffer.estimate)}, bid above guess {formatMoney(playerOffer.allocation)}, original cap{' '}
-        {formatMoney(playerOffer.estimate + playerOffer.allocation)}, final cap {formatMoney(playerOffer.cap)}, raises {r.raises}.
-      </p>
+      <section className="score-card" aria-labelledby="score-title">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Decision quality</p>
+            <h2 id="score-title">Score breakdown</h2>
+          </div>
+          <strong>{score.total} / 100</strong>
+        </div>
+        <div className="score-list">
+          {COMPONENTS.map((component) => {
+            const value = score[component.key];
+            return (
+              <div className="score-row" key={component.key}>
+                <div className="score-row__label">
+                  <span>{component.label}</span>
+                  <span>{value} / {component.max}</span>
+                </div>
+                <div className="score-track" aria-hidden="true">
+                  <span style={{ width: `${(value / component.max) * 100}%` }} />
+                </div>
+                {value < component.max ? <p>{explain(component.key, result)}</p> : null}
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
-      <button
-        className="rounded-lg bg-blue-600 px-4 py-2 text-white"
-        onClick={() => dispatch({ type: last ? 'SHOW_FINAL_RESULTS' : 'BEGIN_HOUSE' })}
-      >
-        {last ? 'See Final Results' : 'Next House'}
-      </button>
-    </div>
+      <footer className="screen-actions">
+        <p>
+          Estimate {formatMoney(playerOffer.estimate)} · Original limit {formatMoney(playerOffer.estimate + playerOffer.allocation)}
+          {result.raises > 0 ? ` · Final limit ${formatMoney(playerOffer.cap)}` : ''}
+        </p>
+        <button onClick={() => dispatch({ type: last ? 'SHOW_FINAL_RESULTS' : 'BEGIN_HOUSE' })}>
+          {last ? 'Review all decisions' : 'Price the next house'}
+        </button>
+      </footer>
+    </main>
   );
 };
 

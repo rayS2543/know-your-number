@@ -5,6 +5,12 @@
 // If logic.ts uses different export names, adjust ONLY the imports below and report it.
 
 import { winningPrice, settleHouse, scoreHouse, standingOffer } from "../src/game/logic";
+import { lessonsForResults, outcomeLabel, outcomeTone } from "../src/game/explain";
+import { houses } from "../src/game/houses";
+import type { HouseResult } from "../src/game/types";
+import { gameReducer } from "../src/game/useGame";
+import type { GameState } from "../src/game/types";
+import { headroomPercent } from "../src/game/presentation";
 
 let failures = 0;
 function check(label: string, actual: unknown, expected: unknown) {
@@ -92,6 +98,78 @@ const twoRaises = scoreHouse({
   pot: 16000, reserveFloor: 6000, raises: 2, won: true, canClose: true, closesSafely: true,
 });
 check("score two raises auction is 0", twoRaises.auction, 0);
+
+const disciplinedLoss: HouseResult = {
+  raises: 0,
+  house: houses[1],
+  playerOffer: { estimate: 503000, allocation: 12000, cap: 515000 },
+  settlement: null,
+  won: false,
+  winningPrice: null,
+  score: h2Perfect,
+};
+check("disciplined loss label", outcomeLabel(disciplinedLoss), "Walked away wisely");
+check("disciplined loss tone", outcomeTone(disciplinedLoss), "wise");
+
+const safePurchase: HouseResult = {
+  raises: 0,
+  house: houses[0],
+  playerOffer: { estimate: 400000, allocation: 12000, cap: 412000 },
+  settlement: settleHouse(411000, 400000, 20000, 8000),
+  won: true,
+  winningPrice: 411000,
+  score: h1Perfect,
+};
+check("safe purchase label", outcomeLabel(safePurchase), "Bought safely");
+check("safe purchase tone", outcomeTone(safePurchase), "safe");
+
+const failedClose: HouseResult = {
+  raises: 1,
+  house: houses[1],
+  playerOffer: { estimate: 503000, allocation: 12000, cap: 558000 },
+  settlement: settleHouse(555000, 503000, 20000, 8000),
+  won: true,
+  winningPrice: 555000,
+  score: h2Chase,
+};
+check("failed close label", outcomeLabel(failedClose), "Won, but could not close");
+check("failed close tone", outcomeTone(failedClose), "danger");
+
+const safeRanch: HouseResult = {
+  raises: 0,
+  house: houses[2],
+  playerOffer: { estimate: 365000, allocation: 10000, cap: 375000 },
+  settlement: settleHouse(374000, 365000, 16000, 6000),
+  won: true,
+  winningPrice: 374000,
+  score: h3Perfect,
+};
+const perfectLessons = lessonsForResults([safePurchase, disciplinedLoss, safeRanch]);
+check("perfect lessons use distinct categories", perfectLessons.map((lesson) => lesson.key), ["outcome", "auction", "allocation"]);
+check("perfect lessons use distinct houses", perfectLessons.map((lesson) => lesson.houseId), [2, 1, 3]);
+
+const reducerFixture: GameState = {
+  phase: "start",
+  currentHouseIndex: 0,
+  houses,
+  playerOffers: [],
+  houseResults: [],
+  biddingProgress: { rivalBidIndex: 0, raises: 0 },
+};
+const startedGame = gameReducer(reducerFixture, { type: "START_GAME" });
+check("start enters the offer desk", startedGame.phase, "setNumber");
+const nextHouse = gameReducer({ ...reducerFixture, phase: "reveal" }, { type: "BEGIN_HOUSE" });
+check("next house enters the offer desk", nextHouse.phase, "setNumber");
+check("next house advances the index", nextHouse.currentHouseIndex, 1);
+const replayedGame = gameReducer({ ...reducerFixture, phase: "finalResults" }, { type: "PLAY_AGAIN" });
+check("play again returns to start", replayedGame.phase, "start");
+
+check("headroom before the first bid", headroomPercent(412000, 400000, null), 100);
+check("headroom with no allocation", headroomPercent(400000, 400000, null), 0);
+check("headroom at the estimate", headroomPercent(412000, 400000, 400000), 100);
+check("headroom halfway to the limit", headroomPercent(412000, 400000, 406000), 50);
+check("headroom at the limit", headroomPercent(412000, 400000, 412000), 0);
+check("headroom above the limit clamps", headroomPercent(412000, 400000, 420000), 0);
 
 console.log(failures === 0 ? "ORACLE: ALL CHECKS PASSED" : `ORACLE: ${failures} CHECK(S) FAILED`);
 process.exit(failures === 0 ? 0 : 1);

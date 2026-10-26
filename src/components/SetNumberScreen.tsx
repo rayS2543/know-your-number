@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import type { Dispatch } from 'react';
 import type { GameState } from '../game/types';
 import type { Action } from '../game/useGame';
-import { useState } from 'react';
+import { formatMoney } from '../game/logic';
 
 interface Props {
   state: GameState;
@@ -10,136 +11,192 @@ interface Props {
 
 const SetNumberScreen = ({ state, dispatch }: Props) => {
   const currentHouse = state.houses[state.currentHouseIndex];
-  const [estimate, setEstimate] = useState<number | null>(null);
-  const [allocation, setAllocation] = useState<number>(0);
-
-  const formatMoney = (amount: number): string => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount).replace('.00', '');
-  };
-
+  const [estimate, setEstimate] = useState<number | null>(currentHouse.listingPrice);
+  const [allocation, setAllocation] = useState(0);
   const safeGapAmount = currentHouse.pot - currentHouse.reserveFloor;
-  // A usable guess is positive and in $1,000 steps.
-  const estimateValid = estimate !== null && estimate % 1000 === 0;
+  const estimateMin = Math.floor((currentHouse.listingPrice * 0.8) / 1000) * 1000;
+  const estimateMax = Math.ceil((currentHouse.listingPrice * 1.2) / 1000) * 1000;
+  const estimateValid = estimate !== null && estimate >= estimateMin && estimate <= estimateMax && estimate % 1000 === 0;
   const walkAwayNumber = estimateValid ? estimate + allocation : null;
+  const totalScore = state.houseResults.reduce((sum, result) => sum + result.score.total, 0);
 
-  const handleEstimateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(event.target.value, 10);
-    setEstimate(Number.isFinite(value) && value > 0 ? value : null);
+  const handleEstimateChange = (value: string) => {
+    const nextEstimate = Number.parseInt(value, 10);
+    setEstimate(Number.isFinite(nextEstimate) && nextEstimate > 0 ? nextEstimate : null);
   };
 
   const handleSubmit = () => {
-    if (estimateValid) {
-      dispatch({
-        type: 'SUBMIT_OFFER',
-        payload: {
-          estimate,
-          allocation,
-        },
-      });
-    }
+    if (!estimateValid) return;
+    dispatch({ type: 'SUBMIT_OFFER', payload: { estimate, allocation } });
   };
 
   return (
-    <div className="set-number-screen">
-      <div className="header-context">
-        <h2>{currentHouse.name}</h2>
-        <p>Asking Price: {formatMoney(currentHouse.listingPrice)}</p>
-        <p>Spare Cash Pot: {formatMoney(currentHouse.pot)}</p>
-        <p>Reserve Floor: {formatMoney(currentHouse.reserveFloor)}</p>
-        <p>Safe Gap Amount: {formatMoney(safeGapAmount)}</p>
-      </div>
-      <div className="comparable-sales">
-        <h3>Comparable Sales</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Price</th>
-              <th>Distance</th>
-              <th>Size</th>
-              <th>Condition</th>
-              <th>Sold</th>
-            </tr>
-          </thead>
-          <tbody>
-            {currentHouse.comps.map((comp) => (
-              <tr key={comp.price}>
-                <td>{formatMoney(comp.price)}</td>
-                <td>{comp.distanceMi} mi</td>
-                <td>{comp.sqftNote}</td>
-                <td>{comp.conditionNote}</td>
-                <td>{comp.soldNote}</td>
-              </tr>
+    <main className="screen offer-screen">
+      <header className="round-header">
+        <div>
+          <p className="eyebrow">Offer desk · House {state.currentHouseIndex + 1} of {state.houses.length}</p>
+          <h1>{currentHouse.name}</h1>
+        </div>
+        {totalScore > 0 ? <p className="running-score"><span>Score</span>{totalScore}</p> : null}
+      </header>
+
+      <section className="property-brief" aria-labelledby="property-title">
+        <div>
+          <p className="eyebrow">Property file</p>
+          <h2 id="property-title">Price the evidence, not the pressure.</h2>
+          <p>{currentHouse.blurb}</p>
+        </div>
+        <dl className="property-facts">
+          <div><dt>Asking</dt><dd>{formatMoney(currentHouse.listingPrice)}</dd></div>
+          <div><dt>Beds</dt><dd>{currentHouse.beds}</dd></div>
+          <div><dt>Square feet</dt><dd>{currentHouse.sqft.toLocaleString('en-US')}</dd></div>
+        </dl>
+      </section>
+
+      <div className="offer-layout">
+        <section className="comp-section" aria-labelledby="comps-title">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Appraiser's evidence</p>
+              <h2 id="comps-title">Comparable sales</h2>
+            </div>
+            <p>Recent, nearby, and similar homes carry the most weight.</p>
+          </div>
+
+          <div className="comp-table-wrap">
+            <table className="comp-table">
+              <thead>
+                <tr><th>Sale price</th><th>Distance</th><th>Size</th><th>Condition</th><th>Sold</th></tr>
+              </thead>
+              <tbody>
+                {currentHouse.comps.map((comp) => (
+                  <tr key={`${comp.price}-${comp.distanceMi}`}>
+                    <td>{formatMoney(comp.price)}</td>
+                    <td>{comp.distanceMi} mi</td>
+                    <td>{comp.sqftNote}</td>
+                    <td>{comp.conditionNote}</td>
+                    <td>{comp.soldNote}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="comp-list">
+            {currentHouse.comps.map((comp, index) => (
+              <article key={`${comp.price}-${comp.distanceMi}`}>
+                <div><span>Comp {index + 1}</span><strong>{formatMoney(comp.price)}</strong></div>
+                <dl>
+                  <div><dt>Distance</dt><dd>{comp.distanceMi} mi</dd></div>
+                  <div><dt>Size</dt><dd>{comp.sqftNote}</dd></div>
+                  <div><dt>Condition</dt><dd>{comp.conditionNote}</dd></div>
+                  <div><dt>Sold</dt><dd>{comp.soldNote}</dd></div>
+                </dl>
+              </article>
             ))}
-          </tbody>
-        </table>
-      </div>
-      <div className="inputs">
-        <div className="input-group">
-          <label className="font-semibold">Your guess at the appraisal</label>
-          <p className="text-sm text-gray-600">The bank sends an appraiser. Using the sales above, what number will they land on?</p>
-          <input
-            type="range"
-            min={Math.floor(currentHouse.listingPrice * 0.8 / 1000) * 1000}
-            max={Math.ceil(currentHouse.listingPrice * 1.2 / 1000) * 1000}
-            step={1000}
-            value={estimate !== null ? estimate : ''}
-            onChange={handleEstimateChange}
-          />
-          <input
-            type="number"
-            min={Math.floor(currentHouse.listingPrice * 0.8 / 1000) * 1000}
-            max={Math.ceil(currentHouse.listingPrice * 1.2 / 1000) * 1000}
-            step={1000}
-            value={estimate !== null ? estimate : ''}
-            onChange={handleEstimateChange}
-            placeholder="Slide or type your estimate"
-          />
-        </div>
-        <div className="input-group">
-          <label className="font-semibold">The most you will bid</label>
-          {!estimateValid ? (
-            <p className="text-sm text-gray-600">Set your guess first, in $1,000 steps. Then choose how far above it you are willing to go.</p>
-          ) : (
-            <>
-              <p className="text-sm text-gray-600">
-                Your guess is {formatMoney(estimate)}. Going above it means you are betting the appraisal comes in higher than you think.
-              </p>
+          </div>
+        </section>
+
+        <aside className="offer-panel" aria-labelledby="offer-title">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">Your offer rule</p>
+              <h2 id="offer-title">Set the number now.</h2>
+            </div>
+          </div>
+
+          <section className="cash-gauge" aria-labelledby="cash-title">
+            <div className="cash-gauge__header">
+              <div><span id="cash-title">Cash available</span><strong>{formatMoney(currentHouse.pot)}</strong></div>
+              <div><span>Emergency cushion to keep</span><strong>{formatMoney(currentHouse.reserveFloor)}</strong></div>
+            </div>
+            <div className="cash-gauge__track" aria-hidden="true">
+              <span className="cash-gauge__safe" style={{ width: `${(safeGapAmount / currentHouse.pot) * 100}%` }} />
+              <span className="cash-gauge__reserve" style={{ width: `${(currentHouse.reserveFloor / currentHouse.pot) * 100}%` }} />
+              <span className="cash-gauge__allocation" style={{ width: `${(allocation / currentHouse.pot) * 100}%` }} />
+            </div>
+            <p>
+              Keep {formatMoney(currentHouse.reserveFloor)} for moving, repairs, and surprises. That leaves {formatMoney(safeGapAmount)} for an appraisal gap.
+            </p>
+          </section>
+
+          <div className="offer-control">
+            <div className="control-label">
+              <label id="appraisal-label" htmlFor="appraisal-input">1. Estimate the appraisal</label>
+              <strong>{estimateValid ? formatMoney(estimate) : 'Enter a valid estimate'}</strong>
+            </div>
+            <p id="appraisal-help">Use the comparable sales. Estimates move in $1,000 steps.</p>
+            <input
+              id="appraisal-range"
+              type="range"
+              min={estimateMin}
+              max={estimateMax}
+              step={1000}
+              value={estimate ?? currentHouse.listingPrice}
+              aria-labelledby="appraisal-label"
+              aria-describedby="appraisal-help"
+              aria-valuetext={estimateValid ? formatMoney(estimate) : undefined}
+              onChange={(event) => handleEstimateChange(event.target.value)}
+            />
+            <div className="number-field">
+              <span>$</span>
               <input
-                type="range"
-                min={estimate}
-                max={estimate + currentHouse.pot}
-                step={500}
-                value={estimate + allocation}
-                onChange={(e) => setAllocation(parseInt(e.target.value, 10) - estimate)}
+                id="appraisal-input"
+                type="number"
+                min={estimateMin}
+                max={estimateMax}
+                step={1000}
+                value={estimate ?? ''}
+                aria-describedby="appraisal-help"
+                onChange={(event) => handleEstimateChange(event.target.value)}
               />
-              <p>
-                That is <strong>{formatMoney(allocation)}</strong> above your guess. If the appraisal matches your guess, you would need{' '}
-                {formatMoney(allocation)} of spare cash to close, leaving {formatMoney(currentHouse.pot - allocation)}.
-              </p>
-            </>
-          )}
-        </div>
-      </div>
-      <div className="reserve-warning">
-        {allocation > safeGapAmount ? (
-          <div className="warning">
-            Going this high dips into your reserve by {formatMoney(allocation - safeGapAmount)}. If you win near your cap, you will close with less than your reserve left.
+            </div>
           </div>
-        ) : (
-          <div className="neutral">
-            Your reserve stays intact.
+
+          <div className="offer-control">
+            <div className="control-label">
+              <label htmlFor="bid-cap-range">2. Set your walk-away number</label>
+              <strong>{walkAwayNumber === null ? 'Set an estimate first' : formatMoney(walkAwayNumber)}</strong>
+            </div>
+            <p id="bid-cap-help">This is the highest offer your escalation clause can reach.</p>
+            <input
+              id="bid-cap-range"
+              type="range"
+              min={estimate ?? currentHouse.listingPrice}
+              max={(estimate ?? currentHouse.listingPrice) + currentHouse.pot}
+              step={500}
+              value={(estimate ?? currentHouse.listingPrice) + allocation}
+              disabled={!estimateValid}
+              aria-describedby="bid-cap-help"
+              aria-valuetext={walkAwayNumber === null ? undefined : formatMoney(walkAwayNumber)}
+              onChange={(event) => setAllocation(Number.parseInt(event.target.value, 10) - (estimate ?? currentHouse.listingPrice))}
+            />
+            <div className="offer-equation" aria-live="polite">
+              <span>{estimateValid ? formatMoney(estimate) : 'Appraisal'}</span>
+              <span>+</span>
+              <span>{formatMoney(allocation)} gap cash</span>
+              <span>=</span>
+              <strong>{walkAwayNumber === null ? '—' : formatMoney(walkAwayNumber)}</strong>
+            </div>
           </div>
-        )}
+
+          <div className={`reserve-callout ${allocation > safeGapAmount ? 'reserve-callout--risk' : ''}`} role="status">
+            {allocation > safeGapAmount ? (
+              <><strong>Emergency cushion at risk.</strong> This limit could use {formatMoney(allocation - safeGapAmount)} of the cash meant for moving, repairs, and surprises.</>
+            ) : (
+              <><strong>Emergency cushion protected.</strong> If your estimate is right, this limit leaves at least {formatMoney(currentHouse.pot - allocation)} in cash.</>
+            )}
+          </div>
+
+          <button className="primary-action" onClick={handleSubmit} disabled={!estimateValid}>
+            Lock in {walkAwayNumber === null ? 'your number' : formatMoney(walkAwayNumber)}
+          </button>
+          <p className="fine-print">
+            Affordability and Auction Discipline are separate. A later raise may still be affordable, but Auction Discipline scores whether you keep this pre-bidding limit.
+          </p>
+        </aside>
       </div>
-      <div className="walk-away-number">
-        <p className="text-sm text-gray-600">Your most you will bid</p>
-        <h3>{walkAwayNumber !== null ? formatMoney(walkAwayNumber) : 'Set your estimate to see your number.'}</h3>
-        <p>Your offer tops the highest rival bid by {formatMoney(currentHouse.escalationStep)} at a time, up to this number and never above it.</p>
-      </div>
-      <button onClick={handleSubmit} disabled={!estimateValid}>
-        Submit Offer
-      </button>
-    </div>
+    </main>
   );
 };
 

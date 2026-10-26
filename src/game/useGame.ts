@@ -7,7 +7,6 @@ interface Action {
   type: 
     | 'START_GAME'
     | 'BEGIN_HOUSE'
-    | 'GO_TO_SET_NUMBER'
     | 'SUBMIT_OFFER'
     | 'NEXT_BID'
     | 'RAISE_CAP'
@@ -26,9 +25,7 @@ const initialState: GameState = {
   houseResults: [],
   biddingProgress: {
     rivalBidIndex: 0,
-    checkpointOpen: false,
     raises: 0,
-    finalCap: 0,
   },
 };
 
@@ -37,16 +34,14 @@ export function gameReducer(state: GameState, action: Action): GameState {
     case 'START_GAME':
       return {
         ...initialState,
-        phase: 'dossier',
+        phase: 'setNumber',
       };
     case 'BEGIN_HOUSE':
       return {
         ...state,
-        phase: 'dossier',
+        phase: 'setNumber',
         currentHouseIndex: state.currentHouseIndex + 1,
       };
-    case 'GO_TO_SET_NUMBER':
-      return { ...state, phase: 'setNumber' };
     case 'SUBMIT_OFFER':
       return {
         ...state,
@@ -61,9 +56,7 @@ export function gameReducer(state: GameState, action: Action): GameState {
         ],
         biddingProgress: {
           rivalBidIndex: 0,
-          checkpointOpen: false,
           raises: 0,
-          finalCap: action.payload.estimate + action.payload.allocation,
         },
       };
     case 'NEXT_BID':
@@ -85,7 +78,6 @@ export function gameReducer(state: GameState, action: Action): GameState {
         ),
         biddingProgress: {
           ...state.biddingProgress,
-          finalCap: action.payload.newCap,
           raises: state.biddingProgress.raises + 1,
         },
       };
