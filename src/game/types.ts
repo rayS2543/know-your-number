@@ -40,16 +40,14 @@ export interface HouseResult {
 }
 
 export interface GameState {
-  phase: "start" | "dossier" | "setNumber" | "bidding" | "reveal" | "finalResults";
+  phase: "start" | "setNumber" | "bidding" | "reveal" | "finalResults";
   currentHouseIndex: number;
   houses: House[];
   playerOffers: PlayerOffer[];
   houseResults: HouseResult[];
   biddingProgress: {
     rivalBidIndex: number;
-    checkpointOpen: boolean;
     raises: number;
-    finalCap: number;
   };
 }
 

@@ -1,4 +1,3 @@
-import React from 'react';
 import type { Dispatch } from 'react';
 import type { Action } from '../game/useGame';
 
@@ -7,34 +6,57 @@ interface StartScreenProps {
 }
 
 const steps = [
-  { title: 'Guess the appraisal', text: 'Look at recent nearby sales and guess what the bank will say the house is worth.' },
-  { title: 'Set your limit', text: 'Pick the most gap you could cover from your spare cash. Your guess plus that is the most you will bid.' },
-  { title: 'Hold or fold', text: 'When rivals hit your limit, stick to it or break it. You are scored on the decision, not just on winning.' },
+  { number: '01', title: 'Read the evidence', text: 'Use nearby sales to estimate the value a bank appraiser can defend.' },
+  { number: '02', title: 'Keep a cash cushion', text: 'Each scenario gives you gap cash and an emergency amount to keep for moving, repairs, and surprises.' },
+  { number: '03', title: 'Hold the line', text: 'Auction Discipline measures whether you keep the limit you wrote before rival bids created pressure.' },
 ];
 
-const StartScreen: React.FC<StartScreenProps> = ({ dispatch }) => {
-  return (
-    <div className="start-screen">
-      <div className="rounded-2xl bg-gradient-to-br from-blue-700 to-blue-500 p-6 text-white shadow-lg">
-        <h1 className="text-4xl">Know Your Number</h1>
-        <p className="mt-2 text-lg text-blue-50">Set a bid limit you can defend before a bidding war talks you out of it.</p>
+const StartScreen = ({ dispatch }: StartScreenProps) => (
+  <main className="screen start-screen">
+    <header className="brand-lockup">
+      <span>Know Your Number</span>
+      <span>First-time buyer field exercise</span>
+    </header>
+
+    <section className="start-hero">
+      <div className="start-copy">
+        <p className="eyebrow">A three-house bidding simulation</p>
+        <h1>Know your number before the room gets loud.</h1>
+        <p className="start-lede">
+          A lender works from the appraisal, not your offer. Price the house, protect your cash, and decide what winning is actually worth.
+        </p>
+        <button className="primary-action" onClick={() => dispatch({ type: 'START_GAME' })}>Open the first property file</button>
       </div>
-      <p>
-        Banks lend based on what a house appraises for, not what you offer. If you pay more, you cover the difference with your own cash.
-        You will bid on three houses, each with its own spare cash. Your down payment and closing costs are already covered.
-      </p>
-      <h2>How it works</h2>
-      <ol className="!list-none !pl-0">
-        {steps.map((s, i) => (
-          <li key={s.title} className="flex gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 font-bold text-white">{i + 1}</span>
-            <span><strong>{s.title}.</strong> {s.text}</span>
+
+      <aside className="formula-file" aria-label="Walk-away number formula">
+        <div className="formula-file__stamp">Offer rule</div>
+        <p className="eyebrow">Write this before bidding</p>
+        <div className="formula-line"><span>Estimated appraisal</span><strong>Evidence</strong></div>
+        <div className="formula-operator" aria-hidden="true">+</div>
+        <div className="formula-line"><span>Cash pot minus emergency cushion</span><strong>Safe gap cash</strong></div>
+        <div className="formula-total"><span>= Walk-away number</span><strong>Your line</strong></div>
+        <p>Winning above this number is not a better outcome.</p>
+      </aside>
+    </section>
+
+    <section className="briefing" aria-labelledby="briefing-title">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Your assignment</p>
+          <h2 id="briefing-title">Three decisions. One rule.</h2>
+        </div>
+        <p>You are scored on judgment, not on buying every house.</p>
+      </div>
+      <ol>
+        {steps.map((step) => (
+          <li key={step.number}>
+            <span>{step.number}</span>
+            <div><h3>{step.title}</h3><p>{step.text}</p></div>
           </li>
         ))}
       </ol>
-      <button className="w-full py-3 text-lg" onClick={() => dispatch({ type: 'START_GAME' })}>Start</button>
-    </div>
-  );
-};
+    </section>
+  </main>
+);
 
 export default StartScreen;
